@@ -270,20 +270,66 @@ docker-compose -f infra/docker-compose.prod.yml up
 - **Grade Distribution**: Count of each grade level
 - **Department Comparison**: Performance by department
 
+## � Database
+
+The application uses **SQLite** for data persistence with the following structure:
+
+- **Database File**: `backend/student_dashboard.db`
+- **Tables**: `student`, `student_subject`, `subject`
+- **Records**: 6 students with 25+ marks entries
+- **Features**: Auto-calculated totals and percentages
+
+### Quick Database Access
+
+```bash
+# View all data
+cd backend
+python show_db_data.py
+
+# Direct SQLite access
+sqlite3 student_dashboard.db
+```
+
+### Database Features
+- ✅ Auto-calculation of total marks and percentages
+- ✅ Component-wise marks (Assignment, Test, Project, Quiz)
+- ✅ Real-time updates via API
+- ✅ Edit functionality with persistent changes
+- ✅ Full relationship tracking between students and subjects
+
+**📖 [Full Database Guide](./DATABASE_GUIDE.md)** - Complete documentation with schema, queries, and examples
+
+## 📚 Documentation
+
+### Feature Documentation
+- [Edit Marks Feature](./EDIT_MARKS_FEATURE.md) - Edit student marks with auto-calculation
+- [Quick Start Guide](./EDIT_MARKS_QUICK_START.md) - User guide for edit functionality
+- [Database Guide](./DATABASE_GUIDE.md) - Database setup, access, and API integration
+- [Implementation Guide](./IMPLEMENTATION_COMPLETE.md) - Technical implementation details
+
+### Setup Guides
+- [Getting Started](./GET_STARTED_NOW.md) - Initial setup instructions
+- [System Setup](./SETUP.md) - Configuration and requirements
+- [Quick Reference](./QUICK_START.md) - Quick command reference
+
 ## 🔐 Security Notes
 
 - CORS is configured for development (adjust for production)
 - CSV file should be backed up regularly
+- SQLite database is file-based (suitable for development)
 - Consider implementing authentication for production
 - Validate all file uploads
+- Database password protection recommended for production
 
 ## 📞 Support
 
 For issues or questions:
-1. Check the SETUP.md for detailed configuration
-2. Review API documentation in docs/
-3. Run comprehensive_test.ps1 to verify functionality
-4. Check backend logs for error details
+1. Check the [Database Guide](./DATABASE_GUIDE.md) for database questions
+2. Review [EDIT_MARKS_FEATURE.md](./EDIT_MARKS_FEATURE.md) for edit functionality
+3. Check [SETUP.md](./SETUP.md) for detailed configuration
+4. Review API documentation in docs/
+5. Run comprehensive_test.ps1 to verify functionality
+6. Check backend logs for error details
 
 ## 📄 License
 
