@@ -79,45 +79,38 @@ export function TopStudents() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-1">
             {topStudents.map((student) => (
               <div
                 key={student.id}
-                className="flex items-start gap-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4 hover:bg-slate-800/70 transition-colors cursor-pointer"
+                className="flex items-center gap-2 rounded p-1 bg-slate-800/30 hover:bg-slate-800/50 transition-colors cursor-pointer text-xs"
                 onClick={() => {
                   setSelectedStudent(student);
                   setIsDetailModalOpen(true);
                 }}
               >
                 {/* Rank Icon */}
-                <div className="rounded-full p-2 flex-shrink-0">
+                <div className="flex-shrink-0">
                   {student.icon}
                 </div>
 
                 {/* Student Info */}
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-slate-100">{student.name}</p>
-                    <Badge className="bg-slate-700 text-slate-200">
-                      Rank #{student.rank}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <p className="font-medium text-slate-100 truncate text-xs">{student.name}</p>
+                    <Badge className="bg-slate-700 text-slate-200 text-xs py-0 px-1">
+                      #{student.rank}
                     </Badge>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-slate-400">
-                    <span>Score: {student.overallPerformance.toFixed(1)}%</span>
-                    <span>•</span>
-                    <span>Overall Performance</span>
                   </div>
                   
                   {/* Performance Breakdown */}
-                  <div className="flex gap-2 mt-2 text-xs">
-                    <Badge variant="outline" className="text-slate-300">
+                  <div className="flex gap-1 text-xs">
+                    <span className="text-slate-400">{student.overallPerformance.toFixed(1)}%</span>
+                    <Badge variant="outline" className="text-slate-400 text-xs py-0 px-1">
                       GPA: {student.gpa.toFixed(2)}
                     </Badge>
-                    <Badge variant="outline" className="text-slate-300">
+                    <Badge variant="outline" className="text-slate-400 text-xs py-0 px-1">
                       Att: {student.attendance}%
-                    </Badge>
-                    <Badge variant="outline" className="text-slate-300">
-                      Act: {student.activityScore}
                     </Badge>
                   </div>
                 </div>

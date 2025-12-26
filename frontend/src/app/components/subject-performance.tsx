@@ -1,85 +1,62 @@
 import { useMemo } from "react";
 import { useStudents } from "../context/StudentContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, Label } from "recharts";
 
 export function SubjectPerformance() {
-  const { students, loading } = useStudents();
+  const { loading, studentDatabase } = useStudents();
 
-  const subjects = useMemo(() => {
-    if (students.length === 0) return [];
+  // Pie chart data: aggregate subject scores from studentDatabase
+  const chartData = useMemo(() => {
+    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
+    if (!studentDatabase || studentDatabase.length === 0) return [];
 
-    // Calculate average scores based on available student data
-    // Using GPA, Attendance, and Activity Score as proxy metrics
-    const totalStudents = students.length;
+    // Aggregate all subjects across all students
+    const subjectMap: Record<string, { total: number; count: number }> = {};
+    studentDatabase.forEach((student) => {
+      student.subjects.forEach((subject) => {
+        if (!subjectMap[subject.name]) {
+          subjectMap[subject.name] = { total: 0, count: 0 };
+        }
+        subjectMap[subject.name].total += subject.percentage;
+        subjectMap[subject.name].count += 1;
+      });
+    });
 
-    return [
-      {
-        name: 'Mathematics',
-        avgScore: Math.round((students.reduce((sum, s) => sum + s.gpa * 25, 0) / totalStudents) * 100) / 100,
-        color: '#3b82f6',
-        students: totalStudents,
-      },
-      {
-        name: 'Science',
-        avgScore: Math.round((students.reduce((sum, s) => sum + s.gpa * 24, 0) / totalStudents) * 100) / 100,
-        color: '#10b981',
-        students: totalStudents,
-      },
-      {
-        name: 'English',
-        avgScore: Math.round((students.reduce((sum, s) => sum + s.gpa * 23, 0) / totalStudents) * 100) / 100,
-        color: '#8b5cf6',
-        students: totalStudents,
-      },
-      {
-        name: 'History',
-        avgScore: Math.round((students.reduce((sum, s) => sum + s.gpa * 20, 0) / totalStudents) * 100) / 100,
-        color: '#f59e0b',
-        students: totalStudents,
-      },
-      {
-        name: 'Physical Education',
-        avgScore: Math.round((students.reduce((sum, s) => sum + s.attendance * 0.93, 0) / totalStudents) * 100) / 100,
-        color: '#ef4444',
-        students: totalStudents,
-      },
-      {
-        name: 'Art',
-        avgScore: Math.round((students.reduce((sum, s) => sum + s.activityScore * 0.88, 0) / totalStudents) * 100) / 100,
-        color: '#ec4899',
-        students: totalStudents,
-      },
-    ];
-  }, [students]);
+    // Only show subjects that have at least one score
+    const data = Object.entries(subjectMap).map(([name, { total, count }], idx) => ({
+      name,
+      value: Math.round((total / count) * 100) / 100, // average percentage
+      color: colors[idx % colors.length],
+    }));
+    return data;
+  }, [studentDatabase]);
 
   if (loading) {
     return (
       <Card className="col-span-full lg:col-span-2">
         <CardHeader>
           <CardTitle>Subject Performance</CardTitle>
-          <CardDescription>Average scores by subject area</CardDescription>
+          <CardDescription>Average scores by subject (from Subject Scores Table)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-80 text-slate-400">
-            Loading...
-          </div>
+          <div className="text-center text-slate-400">Loading data...</div>
         </CardContent>
       </Card>
     );
   }
 
-  if (subjects.length === 0) {
+  if (chartData.length === 0) {
     return (
       <Card className="col-span-full lg:col-span-2">
         <CardHeader>
           <CardTitle>Subject Performance</CardTitle>
-          <CardDescription>Average scores by subject area</CardDescription>
+          <CardDescription>Average scores by subject (from Subject Scores Table)</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center h-80 text-slate-400">
-            <p className="text-lg">No student data available</p>
-            <p className="text-sm mt-2">Add students to view subject performance</p>
+            <p className="text-lg">No subject data available</p>
+            <p className="text-sm mt-2">Add subjects and scores to view chart</p>
           </div>
         </CardContent>
       </Card>
@@ -90,28 +67,28 @@ export function SubjectPerformance() {
     <Card className="col-span-full lg:col-span-2">
       <CardHeader>
         <CardTitle>Subject Performance</CardTitle>
-        <CardDescription>Average scores by subject area</CardDescription>
+        <CardDescription>Average scores by subject (from Subject Scores Table)</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
+        <ResponsiveContainer width="100%" height={280}>
+          <PieChart margin={{ top: 20, right: 100, bottom: 20, left: 100 }}>
             <Pie
-              data={subjects}
-              cx="50%"
+              data={chartData}
+              cx="45%"
               cy="50%"
-              labelLine={false}
-              label={({ name, avgScore }) => `${name}: ${avgScore}%`}
-              outerRadius={100}
-              innerRadius={60}
+              labelLine={true}
+              label={({ name, value }) => `${name}: ${value}%`}
+              outerRadius={75}
+              innerRadius={40}
               fill="#8884d8"
-              dataKey="avgScore"
+              dataKey="value"
             >
-              {subjects.map((entry, index) => (
+              {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
-            <Tooltip />
-            <Legend />
+            <Tooltip formatter={(value) => `${value}%`} />
+            <Legend verticalAlign="bottom" height={36} />
           </PieChart>
         </ResponsiveContainer>
       </CardContent>

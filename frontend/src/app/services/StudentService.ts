@@ -64,6 +64,33 @@ export class StudentService {
   }
 
   /**
+   * Update a student
+   */
+  static async updateStudent(student: Student): Promise<Student | null> {
+    try {
+      console.log(`StudentService: Updating student ${student.id}...`);
+      const response = await fetch(`${API_BASE_URL}/students/${student.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(student),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log(`StudentService: Student ${student.id} updated successfully`, result);
+      return result.success && result.data ? this.normalizeStudent(result.data) : null;
+    } catch (error) {
+      console.error(`StudentService: Error updating student ${student.id}:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Search students by query
    */
   static async searchStudents(query: string, students: Student[]): Promise<Student[]> {

@@ -596,8 +596,8 @@ export function ManagementBoard() {
               <Input
                 type="number"
                 value={formData.id}
-                disabled
-                className="bg-slate-700 border-slate-600 text-slate-400 cursor-not-allowed"
+                onChange={(e) => setFormData({ ...formData, id: parseInt(e.target.value) || 0 })}
+                className="bg-slate-700 border-slate-600 text-slate-100"
               />
             </div>
             <div className="grid gap-2">

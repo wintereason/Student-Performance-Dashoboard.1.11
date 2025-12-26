@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useStudents } from "../context/StudentContext";
+import { SubjectService } from "../services/SubjectService";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -32,7 +34,7 @@ interface Props {
 }
 
 export function SubjectScoresTable({ managedStudents = [] }: Props) {
-  const [studentDatabase, setStudentDatabase] = useState<StudentData[]>([]);
+  const { studentDatabase, setStudentDatabase } = useStudents();
 
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,72 +83,117 @@ export function SubjectScoresTable({ managedStudents = [] }: Props) {
     setShowSearchResults(false);
   };
 
-  const handleAddSubject = () => {
-    if (!newSubject.name || newSubject.marks < 0 || !selectedStudent) {
-      alert("Please select a student and fill in valid subject name and marks");
+  const handleAddSubject = async () => {
+    // Validate inputs
+    if (!selectedStudent) {
+      alert("Please select a student first");
+      return;
+    }
+    if (!newSubject.name || newSubject.name.trim() === "") {
+      alert("Please enter a subject name");
+      return;
+    }
+    if (newSubject.marks === "" || isNaN(newSubject.marks as any) || newSubject.marks < 0) {
+      alert("Please enter valid marks");
+      return;
+    }
+    if (newSubject.maxMarks === "" || isNaN(newSubject.maxMarks as any) || newSubject.maxMarks <= 0) {
+      alert("Please enter valid max marks");
       return;
     }
 
-    const percentage = (newSubject.marks / newSubject.maxMarks) * 100;
+    try {
+      console.log("[Frontend] Adding subject:", { selectedStudent, newSubject });
+      
+      // Call API to add subject - this will persist to database
+      const studentId = parseInt(selectedStudent.studentId);
+      const marksNum = parseFloat(newSubject.marks.toString());
+      const maxMarksNum = parseFloat(newSubject.maxMarks.toString());
+      
+      const result = await SubjectService.addSubjectScore(studentId, {
+        id: 0,
+        student_id: studentId,
+        name: newSubject.name.trim(),
+        marks: marksNum,
+        maxMarks: maxMarksNum,
+        percentage: (marksNum / maxMarksNum) * 100,
+      });
 
-    const updatedDatabase = studentDatabase.map((student) => {
-      if (student.studentId === selectedStudent.studentId) {
-        const newId =
-          student.subjects.length > 0
-            ? Math.max(...student.subjects.map((s) => s.id))
-            : 0;
-        return {
-          ...student,
-          subjects: [
-            ...student.subjects,
-            {
-              id: newId + 1,
-              name: newSubject.name,
-              marks: newSubject.marks,
-              maxMarks: newSubject.maxMarks,
-              percentage: Math.round(percentage * 100) / 100,
-            },
-          ],
-        };
+      if (result && result.id) {
+        console.log("[Frontend] Subject added successfully:", result);
+        
+        // Update local state with the response from server
+        const updatedDatabase = studentDatabase.map((student) => {
+          if (student.studentId === selectedStudent.studentId) {
+            return {
+              ...student,
+              subjects: [
+                ...student.subjects,
+                {
+                  id: result.id,
+                  name: result.name,
+                  marks: result.marks,
+                  maxMarks: result.maxMarks,
+                  percentage: result.percentage,
+                },
+              ],
+            };
+          }
+          return student;
+        });
+
+        setStudentDatabase(updatedDatabase);
+        const updatedStudent = updatedDatabase.find(
+          (s) => s.studentId === selectedStudent.studentId
+        );
+        if (updatedStudent) {
+          setSelectedStudent(updatedStudent);
+        }
+        
+        // Reset form
+        setNewSubject({ name: "", marks: 0, maxMarks: 100 });
+      } else {
+        console.error("[Frontend] API returned invalid response:", result);
+        alert("Failed to add subject. Server returned no data. Check browser console for details.");
       }
-      return student;
-    });
-
-    // Update database first
-    setStudentDatabase(updatedDatabase);
-    
-    // Find the updated student from the new database
-    const updatedStudent = updatedDatabase.find(
-      (s) => s.studentId === selectedStudent.studentId
-    );
-    if (updatedStudent) {
-      setSelectedStudent(updatedStudent);
+    } catch (error) {
+      console.error("[Frontend] Error adding subject:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      alert(`Error adding subject:\n\n${errorMessage}\n\nCheck browser console (F12) for more details.`);
     }
-    
-    // Clear the form after adding
-    setNewSubject({ name: "", marks: 0, maxMarks: 100 });
   };
 
-  const handleDeleteSubject = (subjectId: number) => {
+  const handleDeleteSubject = async (subjectId: number) => {
     if (!selectedStudent) return;
 
-    setStudentDatabase(
-      studentDatabase.map((student) => {
-        if (student.studentId === selectedStudent.studentId) {
-          return {
-            ...student,
-            subjects: student.subjects.filter((s) => s.id !== subjectId),
-          };
-        }
-        return student;
-      })
-    );
+    try {
+      const success = await SubjectService.deleteSubjectScore(subjectId);
+      
+      if (success) {
+        setStudentDatabase(
+          studentDatabase.map((student) => {
+            if (student.studentId === selectedStudent.studentId) {
+              return {
+                ...student,
+                subjects: student.subjects.filter((s) => s.id !== subjectId),
+              };
+            }
+            return student;
+          })
+        );
 
-    const updatedStudent = studentDatabase.find(
-      (s) => s.studentId === selectedStudent.studentId
-    );
-    if (updatedStudent) {
-      setSelectedStudent(updatedStudent);
+        const updatedStudent = studentDatabase.find(
+          (s) => s.studentId === selectedStudent.studentId
+        );
+        if (updatedStudent) {
+          setSelectedStudent(updatedStudent);
+        }
+      } else {
+        alert("Failed to delete subject");
+      }
+    } catch (error) {
+      console.error("Error deleting subject:", error);
+      alert("Error deleting subject");
     }
   };
 
@@ -355,49 +402,43 @@ export function SubjectScoresTable({ managedStudents = [] }: Props) {
                     <Input
                       type="number"
                       min="0"
+                      step="0.1"
                       placeholder="Marks"
-                      value={newSubject.marks}
+                      value={newSubject.marks === 0 ? "" : newSubject.marks}
                       onChange={(e) =>
                         setNewSubject({
                           ...newSubject,
-                          marks: e.target.value === "" ? 0 : parseInt(e.target.value) || 0,
+                          marks: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0,
                         })
                       }
-                      onFocus={(e) => {
-                        if (e.target.value === "0") {
-                          e.target.value = "";
-                        }
-                      }}
-                      className="bg-slate-700 border-slate-600 text-slate-100 text-sm"
+                      className="bg-slate-700 border-slate-600 text-slate-100 text-center text-sm w-20 mx-auto"
                     />
                   </div>
                   <div className="w-24">
                     <label className="text-xs text-slate-400 block mb-2">Max</label>
                     <Input
                       type="number"
-                      min="0"
+                      min="1"
+                      step="0.1"
                       placeholder="Max"
                       value={newSubject.maxMarks}
                       onChange={(e) =>
                         setNewSubject({
                           ...newSubject,
-                          maxMarks: e.target.value === "" ? 100 : parseInt(e.target.value) || 100,
+                          maxMarks: e.target.value === "" ? 100 : parseFloat(e.target.value) || 100,
                         })
                       }
-                      onFocus={(e) => {
-                        if (e.target.value === "100") {
-                          e.target.select();
-                        }
-                      }}
                       className="bg-slate-700 border-slate-600 text-slate-100 text-sm"
                     />
                   </div>
                   <button
                     onClick={handleAddSubject}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm flex items-center gap-2"
+                    type="button"
+                    disabled={!newSubject.name?.trim() || !selectedStudent || newSubject.marks === "" || newSubject.maxMarks === "" || newSubject.marks < 0 || newSubject.maxMarks <= 0}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 active:bg-green-800 disabled:bg-green-600/50 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
                   >
                     <Plus className="w-4 h-4" />
-                    Add
+                    Add Subject
                   </button>
                 </div>
               </div>

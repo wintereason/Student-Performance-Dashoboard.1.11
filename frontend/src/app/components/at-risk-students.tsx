@@ -1,11 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useStudents } from "../context/StudentContext";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { AlertTriangle, TrendingDown } from "lucide-react";
+import { StudentDetailModal } from "./student-detail-modal";
 
 export function AtRiskStudents() {
   const { students, loading } = useStudents();
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
 
   const atRiskStudents = useMemo(() => {
     return students
@@ -44,7 +46,8 @@ export function AtRiskStudents() {
   if (loading) return <div className="p-4 text-slate-400">Loading...</div>;
 
   return (
-    <Card className="col-span-full">
+    <>
+      <Card className="col-span-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-red-400" />
@@ -66,7 +69,8 @@ export function AtRiskStudents() {
               {atRiskStudents.map((student) => (
                 <tr
                   key={student.id}
-                  className="border-b border-slate-700 hover:bg-slate-800/50 transition-colors"
+                  className="border-b border-slate-700 hover:bg-slate-800/50 transition-colors cursor-pointer"
+                  onClick={() => setSelectedStudent(student)}
                 >
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-2">
@@ -112,5 +116,11 @@ export function AtRiskStudents() {
         )}
       </CardContent>
     </Card>
+    <StudentDetailModal
+      student={selectedStudent}
+      isOpen={selectedStudent !== null}
+      onClose={() => setSelectedStudent(null)}
+    />
+  </>
   );
 }

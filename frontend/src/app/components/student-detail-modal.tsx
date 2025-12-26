@@ -117,42 +117,48 @@ export function StudentDetailModal({ student, isOpen, onClose }: StudentDetailMo
         {/* Three Main Metrics in Row */}
         <div className="grid grid-cols-3 gap-2 mb-2">
           {/* GPA Card */}
-          <div className="bg-slate-700/50 rounded-lg p-2 border border-slate-600">
-            <div className="flex items-center gap-1 mb-1">
-              <BarChart3 className="w-3 h-3 text-blue-400" />
-              <p className="text-xs text-slate-300 font-semibold">GPA</p>
+          <div className="parallelogram-card">
+            <div className="parallelogram-content">
+              <div className="flex items-center gap-1 mb-1 justify-center">
+                <BarChart3 className="w-3 h-3 text-blue-400" />
+                <p className="text-xs text-slate-300 font-semibold">GPA</p>
+              </div>
+              <p className="text-base font-bold text-slate-100">{student.gpa.toFixed(2)}</p>
+              <p className="text-xs text-slate-500">/ 4.0</p>
+              <Badge className={`${getGPABadgeColor(student.gpa)} text-xs w-full justify-center py-0.5 mt-1`}>
+                {getGPALabel(student.gpa)}
+              </Badge>
             </div>
-            <p className="text-lg font-bold text-slate-100">{student.gpa.toFixed(2)}</p>
-            <p className="text-xs text-slate-500">/ 4.0</p>
-            <Badge className={`${getGPABadgeColor(student.gpa)} text-xs w-full justify-center py-0.5 mt-1`}>
-              {getGPALabel(student.gpa)}
-            </Badge>
           </div>
 
           {/* Attendance Card */}
-          <div className="bg-slate-700/50 rounded-lg p-2 border border-slate-600">
-            <div className="flex items-center gap-1 mb-1">
-              <BookOpen className="w-3 h-3 text-purple-400" />
-              <p className="text-xs text-slate-300 font-semibold">Attend</p>
+          <div className="parallelogram-card">
+            <div className="parallelogram-content">
+              <div className="flex items-center gap-1 mb-1 justify-center">
+                <BookOpen className="w-3 h-3 text-purple-400" />
+                <p className="text-xs text-slate-300 font-semibold">Attend</p>
+              </div>
+              <p className="text-base font-bold text-slate-100">{student.attendance}%</p>
+              <p className="text-xs text-slate-500">-</p>
+              <Badge className={`${getAttendanceBadgeColor(student.attendance)} text-xs w-full justify-center py-0.5 mt-1`}>
+                {getAttendanceLabel(student.attendance)}
+              </Badge>
             </div>
-            <p className="text-lg font-bold text-slate-100">{student.attendance}%</p>
-            <p className="text-xs text-slate-500">-</p>
-            <Badge className={`${getAttendanceBadgeColor(student.attendance)} text-xs w-full justify-center py-0.5 mt-1`}>
-              {getAttendanceLabel(student.attendance)}
-            </Badge>
           </div>
 
           {/* Activity Score Card */}
-          <div className="bg-slate-700/50 rounded-lg p-2 border border-slate-600">
-            <div className="flex items-center gap-1 mb-1">
-              <Activity className="w-3 h-3 text-green-400" />
-              <p className="text-xs text-slate-300 font-semibold">Act</p>
+          <div className="parallelogram-card">
+            <div className="parallelogram-content">
+              <div className="flex items-center gap-1 mb-1 justify-center">
+                <Activity className="w-3 h-3 text-green-400" />
+                <p className="text-xs text-slate-300 font-semibold">Act</p>
+              </div>
+              <p className="text-base font-bold text-slate-100">{student.activityScore}</p>
+              <p className="text-xs text-slate-500">/ 100</p>
+              <Badge className={`${getActivityBadgeColor(student.activityScore)} text-xs w-full justify-center py-0.5 mt-1`}>
+                {getActivityLabel(student.activityScore)}
+              </Badge>
             </div>
-            <p className="text-lg font-bold text-slate-100">{student.activityScore}</p>
-            <p className="text-xs text-slate-500">/ 100</p>
-            <Badge className={`${getActivityBadgeColor(student.activityScore)} text-xs w-full justify-center py-0.5 mt-1`}>
-              {getActivityLabel(student.activityScore)}
-            </Badge>
           </div>
         </div>
 

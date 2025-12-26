@@ -1,3 +1,26 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+/* Parallelogram card effect and small font for modal cards */
+.parallelogram-card {
+	transform: skew(-20deg);
+	border-radius: 12px;
+	background: #232946;
+	padding: 0.5rem;
+	margin: 0.25rem 0;
+	box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+	min-width: 80px;
+	min-height: 80px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.parallelogram-content {
+	transform: skew(20deg);
+	font-size: 0.7rem;
+	text-align: center;
+	width: 100%;
+}

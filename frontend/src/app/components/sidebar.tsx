@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Users, Settings, TrendingUp, Menu, X } from "lucide-react";
+import { LayoutDashboard, BarChart3, Users, Settings, TrendingUp, Menu, X, BookOpen } from "lucide-react";
 import { useState } from "react";
 
 interface SidebarProps {
@@ -14,6 +14,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     { id: 'overview', label: 'Overview Board', icon: BarChart3 },
     { id: 'performance', label: 'Performance', icon: TrendingUp },
     { id: 'students', label: 'Students', icon: Users },
+    { id: 'subjects', label: 'Subjects', icon: BookOpen },
     { id: 'management', label: 'Management', icon: Settings },
   ];
 

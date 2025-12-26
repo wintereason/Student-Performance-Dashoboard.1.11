@@ -1,1 +1,1 @@
-export * from './StudentService';
+export * from './StudentService';export * from './SubjectService';

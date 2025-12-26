@@ -14,9 +14,15 @@ def create_app():
     
     CORS(app)
     
-    # Register simple students routes
+    # Initialize database
+    from database import init_db
+    init_db(app)
+    
+    # Register routes
     from routes.students_routes import bp as students_bp
+    from routes.subjects_routes import bp as subjects_bp
     app.register_blueprint(students_bp, url_prefix="/api/students")
+    app.register_blueprint(subjects_bp, url_prefix="/api/subjects")
     
     # Health check
     @app.route('/api/health', methods=['GET'])
@@ -36,6 +42,10 @@ def create_app():
     @app.route('/<path:path>')
     def serve_frontend(path):
         """Serve frontend files, fallback to index.html for SPA routing"""
+        # Don't intercept API routes
+        if path.startswith('api'):
+            return jsonify({'error': 'API route not found'}), 404
+        
         if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
             return send_from_directory(app.static_folder, path)
         elif os.path.exists(os.path.join(app.static_folder, 'index.html')):
