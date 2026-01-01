@@ -118,6 +118,7 @@ export default function Dashboard() {
   const fetchStudentMarks = async (students) => {
     try {
       const subjectMarksMap = {}
+      const subjectsFound = new Set() // Track which subjects actually exist
       
       for (const student of students) {
         try {
@@ -126,10 +127,13 @@ export default function Dashboard() {
           
           if (result.success && result.data.subjects) {
             result.data.subjects.forEach(subject => {
-              if (!subjectMarksMap[subject.subject_name]) {
-                subjectMarksMap[subject.subject_name] = []
+              const subjectName = subject.subject_name
+              subjectsFound.add(subjectName) // Add to set of found subjects
+              
+              if (!subjectMarksMap[subjectName]) {
+                subjectMarksMap[subjectName] = []
               }
-              subjectMarksMap[subject.subject_name].push(parseFloat(subject.percentage) || 0)
+              subjectMarksMap[subjectName].push(parseFloat(subject.percentage) || 0)
             })
           }
         } catch (error) {
@@ -137,18 +141,24 @@ export default function Dashboard() {
         }
       }
 
-      // Calculate average scores per subject
-      const subjectColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef8657', '#8b5cf6', '#ec4899', '#14b8a6']
-      const subjects = Object.entries(subjectMarksMap).map(([name, scores], index) => {
-        const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : 0
-        return {
-          name,
-          avgScore,
-          color: subjectColors[index % subjectColors.length]
-        }
-      })
+      // Only show subjects that have actual data from the management board
+      if (subjectsFound.size > 0) {
+        const subjectColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef8657', '#8b5cf6', '#ec4899', '#14b8a6']
+        const subjects = Array.from(subjectsFound).map((name, index) => {
+          const scores = subjectMarksMap[name] || []
+          const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : 0
+          return {
+            name,
+            avgScore,
+            color: subjectColors[index % subjectColors.length]
+          }
+        })
 
-      setSubjectData(subjects)
+        setSubjectData(subjects)
+      } else {
+        // No subjects added yet
+        setSubjectData([])
+      }
     } catch (error) {
       console.error('Error calculating subject performance:', error)
     }
@@ -280,28 +290,41 @@ export default function Dashboard() {
           {/* Subject Performance */}
           <div className="chart-card lg-span">
             <h3 className="chart-card-title">Subject Performance</h3>
-            <p className="chart-card-desc">Average scores by subject area</p>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={subjectData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, avgScore }) => `${name}: ${avgScore}%`}
-                  outerRadius={100}
-                  innerRadius={60}
-                  fill="#8884d8"
-                  dataKey="avgScore"
-                >
-                  {subjectData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <p className="chart-card-desc">Average scores by subject area (from Management Board)</p>
+            {subjectData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={subjectData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, avgScore }) => `${name}: ${avgScore}%`}
+                    outerRadius={100}
+                    innerRadius={60}
+                    fill="#8884d8"
+                    dataKey="avgScore"
+                  >
+                    {subjectData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '300px',
+                color: '#94a3b8',
+                fontSize: '16px'
+              }}>
+                No subjects added yet. Add subjects in the Management Board to see performance data.
+              </div>
+            )}
           </div>
 
           {/* Grade Distribution Card */}
