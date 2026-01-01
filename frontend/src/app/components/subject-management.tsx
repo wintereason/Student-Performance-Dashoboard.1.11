@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import { Search, BookOpen, Loader, Pencil } from "lucide-react";
+import { Search, BookOpen, Loader, Pencil, Plus } from "lucide-react";
 import { useStudents } from "../context/StudentContext";
 import { EditMarksModal } from "./edit-marks-modal";
 
@@ -25,6 +25,14 @@ export function SubjectManagement() {
   const [marksData, setMarksData] = useState<StudentMarksEntry[]>([]);
   const [editingMark, setEditingMark] = useState<StudentMarksEntry | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
+  const [newSubjectData, setNewSubjectData] = useState({
+    subject: "",
+    assignment: 0,
+    test: 0,
+    project: 0,
+    quiz: 0,
+  });
 
   // Filter students based on search
   const filteredStudents = useMemo(() => {
@@ -87,6 +95,75 @@ export function SubjectManagement() {
           : m
       )
     );
+  };
+
+  const handleAddSubject = async () => {
+    if (!selectedStudent) {
+      alert("Please select a student first");
+      return;
+    }
+
+    if (!newSubjectData.subject.trim()) {
+      alert("Please enter a subject name");
+      return;
+    }
+
+    const totalMarks = newSubjectData.assignment + newSubjectData.test + newSubjectData.project + newSubjectData.quiz;
+    
+    if (totalMarks <= 0 || totalMarks > 100) {
+      alert("Total marks must be between 1 and 100. Current total: " + totalMarks);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:5000/api/subjects/student/${selectedStudent.id}/subjects`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            subject_name: newSubjectData.subject.trim(),
+            assignment: parseFloat(String(newSubjectData.assignment)) || 0,
+            test: parseFloat(String(newSubjectData.test)) || 0,
+            project: parseFloat(String(newSubjectData.project)) || 0,
+            quiz: parseFloat(String(newSubjectData.quiz)) || 0,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert("Error adding subject: " + (error.error || "Unknown error"));
+        return;
+      }
+
+      const result = await response.json();
+      
+      // Add new subject to marksData
+      setMarksData([
+        ...marksData,
+        {
+          id: result.data.id,
+          subject: newSubjectData.subject.trim(),
+          assignment: newSubjectData.assignment,
+          test: newSubjectData.test,
+          project: newSubjectData.project,
+          quiz: newSubjectData.quiz,
+          totalMarks: totalMarks,
+          maxMarks: 100,
+        },
+      ]);
+
+      // Reset form and close modal
+      setNewSubjectData({ subject: "", assignment: 0, test: 0, project: 0, quiz: 0 });
+      setIsAddSubjectModalOpen(false);
+      alert("Subject added successfully!");
+    } catch (error) {
+      console.error("Error adding subject:", error);
+      alert("Failed to add subject. Check console for details.");
+    }
   };
 
   // Get student marks history
@@ -173,6 +250,19 @@ export function SubjectManagement() {
 
         {/* Marks History Table */}
             <div className="overflow-x-auto">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-100">Marks Breakdown</h3>
+                {selectedStudent && marksData.length > 0 && (
+                  <button
+                    onClick={() => setIsAddSubjectModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm"
+                    title="Add new subject marks"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Subject
+                  </button>
+                )}
+              </div>
               <table className="w-full text-sm">
                 <thead className="bg-slate-700/50 border-b border-slate-600">
                   <tr>
@@ -298,6 +388,181 @@ export function SubjectManagement() {
             }}
             onSave={handleSaveMarks}
           />
+        )}
+
+        {/* Add Subject Modal */}
+        {isAddSubjectModalOpen && selectedStudent && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="bg-slate-800 border-slate-700 w-full max-w-md mx-4">
+              <CardHeader>
+                <CardTitle className="text-slate-100">Add Subject Marks</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Subject Name */}
+                  <div>
+                    <label className="block text-sm text-slate-300 mb-2">Subject Name</label>
+                    <Input
+                      type="text"
+                      placeholder="e.g., Mathematics, Physics, Chemistry"
+                      value={newSubjectData.subject}
+                      onChange={(e) =>
+                        setNewSubjectData({ ...newSubjectData, subject: e.target.value })
+                      }
+                      className="bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-500"
+                    />
+                  </div>
+
+                  {/* Marks Breakdown */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-2">Assignment (0-20)</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="20"
+                        value={newSubjectData.assignment === 0 ? "" : newSubjectData.assignment}
+                        onFocus={(e) => {
+                          if (e.target.value === "0") {
+                            e.target.value = "";
+                          }
+                        }}
+                        onChange={(e) =>
+                          setNewSubjectData({
+                            ...newSubjectData,
+                            assignment: e.target.value === "" ? 0 : Math.min(20, Math.max(0, parseFloat(e.target.value) || 0)),
+                          })
+                        }
+                        onBlur={(e) => {
+                          if (e.target.value === "") {
+                            setNewSubjectData({
+                              ...newSubjectData,
+                              assignment: 0,
+                            });
+                          }
+                        }}
+                        className="bg-slate-700 border-slate-600 text-slate-100 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-2">Test (0-25)</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="25"
+                        value={newSubjectData.test === 0 ? "" : newSubjectData.test}
+                        onFocus={(e) => {
+                          if (e.target.value === "0") {
+                            e.target.value = "";
+                          }
+                        }}
+                        onChange={(e) =>
+                          setNewSubjectData({
+                            ...newSubjectData,
+                            test: e.target.value === "" ? 0 : Math.min(25, Math.max(0, parseFloat(e.target.value) || 0)),
+                          })
+                        }
+                        onBlur={(e) => {
+                          if (e.target.value === "") {
+                            setNewSubjectData({
+                              ...newSubjectData,
+                              test: 0,
+                            });
+                          }
+                        }}
+                        className="bg-slate-700 border-slate-600 text-slate-100 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-2">Project (0-25)</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="25"
+                        value={newSubjectData.project === 0 ? "" : newSubjectData.project}
+                        onFocus={(e) => {
+                          if (e.target.value === "0") {
+                            e.target.value = "";
+                          }
+                        }}
+                        onChange={(e) =>
+                          setNewSubjectData({
+                            ...newSubjectData,
+                            project: e.target.value === "" ? 0 : Math.min(25, Math.max(0, parseFloat(e.target.value) || 0)),
+                          })
+                        }
+                        onBlur={(e) => {
+                          if (e.target.value === "") {
+                            setNewSubjectData({
+                              ...newSubjectData,
+                              project: 0,
+                            });
+                          }
+                        }}
+                        className="bg-slate-700 border-slate-600 text-slate-100 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-2">Quiz (0-15)</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="15"
+                        value={newSubjectData.quiz === 0 ? "" : newSubjectData.quiz}
+                        onFocus={(e) => {
+                          if (e.target.value === "0") {
+                            e.target.value = "";
+                          }
+                        }}
+                        onChange={(e) =>
+                          setNewSubjectData({
+                            ...newSubjectData,
+                            quiz: e.target.value === "" ? 0 : Math.min(15, Math.max(0, parseFloat(e.target.value) || 0)),
+                          })
+                        }
+                        onBlur={(e) => {
+                          if (e.target.value === "") {
+                            setNewSubjectData({
+                              ...newSubjectData,
+                              quiz: 0,
+                            });
+                          }
+                        }}
+                        className="bg-slate-700 border-slate-600 text-slate-100 text-center"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Auto-calculated Total */}
+                  <div className="p-3 bg-slate-700/30 rounded-lg border border-slate-600">
+                    <p className="text-sm text-slate-400">Total Marks</p>
+                    <p className="text-2xl font-bold text-slate-100">
+                      {newSubjectData.assignment + newSubjectData.test + newSubjectData.project + newSubjectData.quiz}/100
+                    </p>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-2 pt-4">
+                    <button
+                      onClick={() => {
+                        setIsAddSubjectModalOpen(false);
+                        setNewSubjectData({ subject: "", assignment: 0, test: 0, project: 0, quiz: 0 });
+                      }}
+                      className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddSubject}
+                      className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-medium"
+                    >
+                      Add Subject
+                    </button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </CardContent>
     </Card>

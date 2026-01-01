@@ -136,8 +136,18 @@ export function EditMarksModal({
                   type="number"
                   min="0"
                   max="20"
-                  value={assignment}
-                  onChange={(e) => setAssignment(Math.max(0, Math.min(20, parseFloat(e.target.value) || 0)))}
+                  value={assignment === 0 ? "" : assignment}
+                  onFocus={(e) => {
+                    if (e.target.value === "0") {
+                      e.target.value = "";
+                    }
+                  }}
+                  onChange={(e) => setAssignment(e.target.value === "" ? 0 : Math.max(0, Math.min(20, parseFloat(e.target.value) || 0)))}
+                  onBlur={(e) => {
+                    if (e.target.value === "") {
+                      setAssignment(0);
+                    }
+                  }}
                   className="bg-slate-700 border-slate-600 text-slate-100 flex-1"
                 />
                 <span className="text-slate-400">/20</span>
@@ -154,8 +164,18 @@ export function EditMarksModal({
                   type="number"
                   min="0"
                   max="25"
-                  value={test}
-                  onChange={(e) => setTest(Math.max(0, Math.min(25, parseFloat(e.target.value) || 0)))}
+                  value={test === 0 ? "" : test}
+                  onFocus={(e) => {
+                    if (e.target.value === "0") {
+                      e.target.value = "";
+                    }
+                  }}
+                  onChange={(e) => setTest(e.target.value === "" ? 0 : Math.max(0, Math.min(25, parseFloat(e.target.value) || 0)))}
+                  onBlur={(e) => {
+                    if (e.target.value === "") {
+                      setTest(0);
+                    }
+                  }}
                   className="bg-slate-700 border-slate-600 text-slate-100 flex-1"
                 />
                 <span className="text-slate-400">/25</span>
@@ -172,8 +192,18 @@ export function EditMarksModal({
                   type="number"
                   min="0"
                   max="25"
-                  value={project}
-                  onChange={(e) => setProject(Math.max(0, Math.min(25, parseFloat(e.target.value) || 0)))}
+                  value={project === 0 ? "" : project}
+                  onFocus={(e) => {
+                    if (e.target.value === "0") {
+                      e.target.value = "";
+                    }
+                  }}
+                  onChange={(e) => setProject(e.target.value === "" ? 0 : Math.max(0, Math.min(25, parseFloat(e.target.value) || 0)))}
+                  onBlur={(e) => {
+                    if (e.target.value === "") {
+                      setProject(0);
+                    }
+                  }}
                   className="bg-slate-700 border-slate-600 text-slate-100 flex-1"
                 />
                 <span className="text-slate-400">/25</span>
@@ -190,8 +220,18 @@ export function EditMarksModal({
                   type="number"
                   min="0"
                   max="15"
-                  value={quiz}
-                  onChange={(e) => setQuiz(Math.max(0, Math.min(15, parseFloat(e.target.value) || 0)))}
+                  value={quiz === 0 ? "" : quiz}
+                  onFocus={(e) => {
+                    if (e.target.value === "0") {
+                      e.target.value = "";
+                    }
+                  }}
+                  onChange={(e) => setQuiz(e.target.value === "" ? 0 : Math.max(0, Math.min(15, parseFloat(e.target.value) || 0)))}
+                  onBlur={(e) => {
+                    if (e.target.value === "") {
+                      setQuiz(0);
+                    }
+                  }}
                   className="bg-slate-700 border-slate-600 text-slate-100 flex-1"
                 />
                 <span className="text-slate-400">/15</span>

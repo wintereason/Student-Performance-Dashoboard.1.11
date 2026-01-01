@@ -155,29 +155,68 @@ def add_subject_score(student_id):
         
         # Create new subject score
         try:
-            marks = float(data.get('marks', 0))
-            maxMarks = float(data.get('maxMarks', 100))
-            subject_name = str(data.get('name', '')).strip()
+            # Support both old format (marks/maxMarks) and new format (assignment/test/project/quiz)
+            assignment = float(data.get('assignment', 0))
+            test = float(data.get('test', 0))
+            project = float(data.get('project', 0))
+            quiz = float(data.get('quiz', 0))
+            
+            # Validate component ranges
+            if assignment < 0 or assignment > 20:
+                raise ValueError("Assignment must be between 0-20")
+            if test < 0 or test > 25:
+                raise ValueError("Test must be between 0-25")
+            if project < 0 or project > 25:
+                raise ValueError("Project must be between 0-25")
+            if quiz < 0 or quiz > 15:
+                raise ValueError("Quiz must be between 0-15")
+            
+            # Calculate total marks
+            total_marks = assignment + test + project + quiz
+            maxMarks = 100  # Fixed max marks for this schema
+            
+            # Use subject_name from request
+            subject_name = str(data.get('subject_name', data.get('name', ''))).strip()
             
             if not subject_name:
                 raise ValueError("Subject name cannot be empty")
-            if marks < 0:
-                raise ValueError("Marks cannot be negative")
-            if maxMarks <= 0:
-                raise ValueError("Max marks must be greater than 0")
-                
-            subject_score = StudentSubject(
+            if total_marks < 0 or total_marks > maxMarks:
+                raise ValueError(f"Total marks must be between 0-{maxMarks}")
+            
+            # Check if subject already exists for this student
+            existing = StudentSubject.query.filter_by(
                 student_id=student_id,
-                subject_name=subject_name,
-                marks=marks,
-                maxMarks=maxMarks
-            )
+                subject_name=subject_name
+            ).first()
             
-            print(f"[API] Creating subject score: {subject_score.subject_name} - {subject_score.marks}/{subject_score.maxMarks}")
-            print(f"[API] Calculated percentage: {subject_score.percentage}%")
-            
-            db.session.add(subject_score)
-            db.session.commit()
+            if existing:
+                print(f"[API] Subject '{subject_name}' already exists for student {student_id}. Updating...")
+                existing.marks = total_marks
+                existing.maxMarks = maxMarks
+                existing.assignment = assignment
+                existing.test = test
+                existing.project = project
+                existing.quiz = quiz
+                db.session.commit()
+                subject_score = existing
+            else:
+                subject_score = StudentSubject(
+                    student_id=student_id,
+                    subject_name=subject_name,
+                    marks=total_marks,
+                    maxMarks=maxMarks,
+                    assignment=assignment,
+                    test=test,
+                    project=project,
+                    quiz=quiz
+                )
+                
+                print(f"[API] Creating new subject score: {subject_score.subject_name} - {subject_score.marks}/{subject_score.maxMarks}")
+                print(f"[API] Breakdown: Assignment={assignment}, Test={test}, Project={project}, Quiz={quiz}")
+                print(f"[API] Calculated percentage: {subject_score.percentage}%")
+                
+                db.session.add(subject_score)
+                db.session.commit()
             
             response_data = subject_score.to_dict()
             print(f"[API] ✓ Subject saved successfully: {response_data}")
