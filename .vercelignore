@@ -1,0 +1,12 @@
+node_modules
+.git
+.gitignore
+README.md
+*.pyc
+__pycache__
+.env.example
+.env
+backend/__pycache__
+frontend/node_modules
+frontend/.next
+.DS_Store
