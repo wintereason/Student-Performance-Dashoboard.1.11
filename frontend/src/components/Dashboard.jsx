@@ -108,48 +108,7 @@ export default function Dashboard() {
       { grade: 'F', count: gradeCount['F'], color: '#ef4444', percentage: (gradeCount['F'] / students.length * 100).toFixed(1) }
     ]
     setGradeDistributionData(gradeDistribution)
-  }
-
-  const calculateSubjectPerformance = (students) => {
-    // Fetch all students with their subjects from API
-    fetchStudentMarks(students)
-  }
-
-  const fetchStudentMarks = async (students) => {
-    try {
-      const subjectMarksMap = {}
-      const subjectsFound = new Set() // Track which subjects actually exist
-      
-      for (const student of students) {
-        try {
-          const response = await fetch(`/api/students/${student.id}`)
-          const result = await response.json()
-          
-          if (result.success && result.data.subjects) {
-            result.data.subjects.forEach(subject => {
-              const subjectName = subject.subject_name
-              subjectsFound.add(subjectName) // Add to set of found subjects
-              
-              if (!subjectMarksMap[subjectName]) {
-                subjectMarksMap[subjectName] = []
-              }
-              subjectMarksMap[subjectName].push(parseFloat(subject.percentage) || 0)
-            })
-          }
-        } catch (error) {
-          console.error(`Error fetching marks for student ${student.id}:`, error)
-        }
-      }
-
-      // Only show subjects that have actual data from the management board
-      if (subjectsFound.size > 0) {
-        const subjectColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef8657', '#8b5cf6', '#ec4899', '#14b8a6']
-        const subjects = Array.from(subjectsFound).map((name, index) => {
-          const scores = subjectMarksMap[name] || []
-          const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : 0
-          return {
-            name,
-            avgScore,
+  }            avgScore,
             color: subjectColors[index % subjectColors.length]
           }
         })
@@ -287,31 +246,58 @@ export default function Dashboard() {
 
         {/* Performance Section */}
         <div className="charts-grid">
-          {/* Subject Performance */}
+          {/* Student Selector */}
+          <div className="chart-card lg-span">
+            <h3 className="chart-card-title">Select Student</h3>
+            <p className="chart-card-desc">Choose a student to view their subject performance</p>
+            <div style={{ padding: '20px' }}>
+              <select 
+                value={selectedStudent?.id || ''} 
+                onChange={(e) => {
+                  const student = allStudents.find(s => s.id == e.target.value)
+                  if (student) setSelectedStudent(student)
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #475569',
+                  backgroundColor: '#1e293b',
+                  color: '#f1f5f9',
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">Select a student...</option>
+                {allStudents.map(student => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} - {student.roll_number}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Subject Performance - Individual Student */}
           <div className="chart-card lg-span">
             <h3 className="chart-card-title">Subject Performance</h3>
-            <p className="chart-card-desc">Average scores by subject area (from Management Board)</p>
-            {subjectData.length > 0 ? (
+            <p className="chart-card-desc">{selectedStudent ? `${selectedStudent.name}'s subject scores` : 'Select a student above'}</p>
+            {selectedStudent && selectedStudentSubjects.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={subjectData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, avgScore }) => `${name}: ${avgScore}%`}
-                    outerRadius={100}
-                    innerRadius={60}
-                    fill="#8884d8"
-                    dataKey="avgScore"
-                  >
-                    {subjectData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
+                <BarChart data={selectedStudentSubjects}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" domain={[0, 100]} />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: '#1e293b',
+                      border: '1px solid #475569',
+                      borderRadius: '8px'
+                    }}
+                    formatter={(value) => [`${value}%`, 'Score']}
+                  />
+                  <Bar dataKey="score" fill="#10b981" radius={[8, 8, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             ) : (
               <div style={{
@@ -322,7 +308,7 @@ export default function Dashboard() {
                 color: '#94a3b8',
                 fontSize: '16px'
               }}>
-                No subjects added yet. Add subjects in the Management Board to see performance data.
+                {selectedStudent ? 'No subjects found for this student' : 'Select a student to view their subject performance'}
               </div>
             )}
           </div>
