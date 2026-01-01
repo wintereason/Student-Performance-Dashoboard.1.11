@@ -9,12 +9,18 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 app = Flask(__name__)
 CORS(app)
 
+# Configure Flask app for database
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///student_dashboard.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 # Initialize database
 try:
-    from backend.database import init_db
+    from backend.database import db, init_db
     init_db(app)
 except Exception as e:
     print(f"Database initialization error: {e}")
+    import traceback
+    traceback.print_exc()
 
 # Register routes
 try:
@@ -25,6 +31,8 @@ try:
     app.register_blueprint(subjects_bp, url_prefix="/api/subjects")
 except Exception as e:
     print(f"Route registration error: {e}")
+    import traceback
+    traceback.print_exc()
 
 # Health check
 @app.route('/api/health', methods=['GET'])
