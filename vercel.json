@@ -3,9 +3,7 @@
   "buildCommand": "cd frontend && npm ci && npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "api/index.py": {
-      "runtime": "python3.11"
-    }
+    "api/index.py": {}
   },
   "routes": [
     {
