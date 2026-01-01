@@ -12,6 +12,8 @@ export default function Dashboard() {
   const [allStudents, setAllStudents] = useState([])
   const [topScorers, setTopScorers] = useState([])
   const [gradeData, setGradeData] = useState([])
+  const [subjectData, setSubjectData] = useState([])
+  const [gradeDistributionData, setGradeDistributionData] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function Dashboard() {
         calculateStats(result.data)
         calculateTopScorers(result.data)
         calculateGradeDistribution(result.data)
+        calculateSubjectPerformance(result.data)
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -95,6 +98,60 @@ export default function Dashboard() {
     }))
 
     setGradeData(data)
+
+    // Also set grade distribution data for the breakdown card
+    const gradeDistribution = [
+      { grade: 'A', count: gradeCount['A'], color: '#10b981', percentage: (gradeCount['A'] / students.length * 100).toFixed(1) },
+      { grade: 'B', count: gradeCount['B'], color: '#3b82f6', percentage: (gradeCount['B'] / students.length * 100).toFixed(1) },
+      { grade: 'C', count: gradeCount['C'], color: '#f59e0b', percentage: (gradeCount['C'] / students.length * 100).toFixed(1) },
+      { grade: 'D', count: gradeCount['D'], color: '#ef8657', percentage: (gradeCount['D'] / students.length * 100).toFixed(1) },
+      { grade: 'F', count: gradeCount['F'], color: '#ef4444', percentage: (gradeCount['F'] / students.length * 100).toFixed(1) }
+    ]
+    setGradeDistributionData(gradeDistribution)
+  }
+
+  const calculateSubjectPerformance = (students) => {
+    // Fetch all students with their subjects from API
+    fetchStudentMarks(students)
+  }
+
+  const fetchStudentMarks = async (students) => {
+    try {
+      const subjectMarksMap = {}
+      
+      for (const student of students) {
+        try {
+          const response = await fetch(`/api/students/${student.id}`)
+          const result = await response.json()
+          
+          if (result.success && result.data.subjects) {
+            result.data.subjects.forEach(subject => {
+              if (!subjectMarksMap[subject.subject_name]) {
+                subjectMarksMap[subject.subject_name] = []
+              }
+              subjectMarksMap[subject.subject_name].push(parseFloat(subject.percentage) || 0)
+            })
+          }
+        } catch (error) {
+          console.error(`Error fetching marks for student ${student.id}:`, error)
+        }
+      }
+
+      // Calculate average scores per subject
+      const subjectColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef8657', '#8b5cf6', '#ec4899', '#14b8a6']
+      const subjects = Object.entries(subjectMarksMap).map(([name, scores], index) => {
+        const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : 0
+        return {
+          name,
+          avgScore,
+          color: subjectColors[index % subjectColors.length]
+        }
+      })
+
+      setSubjectData(subjects)
+    } catch (error) {
+      console.error('Error calculating subject performance:', error)
+    }
   }
 
   if (loading) return <div className="dashboard-loading">Loading dashboard...</div>
@@ -227,7 +284,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={subjects}
+                  data={subjectData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -237,7 +294,7 @@ export default function Dashboard() {
                   fill="#8884d8"
                   dataKey="avgScore"
                 >
-                  {subjects.map((entry, index) => (
+                  {subjectData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
