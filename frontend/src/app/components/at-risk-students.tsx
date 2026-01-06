@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useStudents } from "../context/StudentContext";
+import { StudentSupabaseService } from "../services/SupabaseService";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { AlertTriangle, TrendingDown } from "lucide-react";
@@ -8,6 +9,25 @@ import { StudentDetailModal } from "./student-detail-modal";
 export function AtRiskStudents() {
   const { students, loading } = useStudents();
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [supabaseSubjects, setSupabaseSubjects] = useState<any[]>([]);
+  const [supabaseExams, setSupabaseExams] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch subjects and exams
+    const fetchData = async () => {
+      try {
+        const [subjects, exams] = await Promise.all([
+          StudentSupabaseService.getSubjects(),
+          StudentSupabaseService.getExams(),
+        ]);
+        setSupabaseSubjects(subjects || []);
+        setSupabaseExams(exams || []);
+      } catch (err) {
+        console.error("Error fetching subjects/exams:", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   const atRiskStudents = useMemo(() => {
     return students
@@ -120,6 +140,8 @@ export function AtRiskStudents() {
       student={selectedStudent}
       isOpen={selectedStudent !== null}
       onClose={() => setSelectedStudent(null)}
+      subjects={supabaseSubjects}
+      exams={supabaseExams}
     />
   </>
   );

@@ -1,39 +1,56 @@
 import { useMemo } from "react";
 import { useStudents } from "../context/StudentContext";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
-export function MarksHistoryChart() {
+export function MarksHistoryChart({ exams = [] }: { exams?: any[] }) {
   const { students, loading } = useStudents();
 
   const marksData = useMemo(() => {
-    if (students.length === 0) return [];
+    if (students.length === 0 || exams.length === 0) return [];
 
-    // Generate monthly data based on student GPA, attendance, and activity scores
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-    
-    return months.map((month, index) => {
-      // Create variation in scores across months
-      const variance = Math.sin(index * 0.5) * 5;
-      
-      const avgGPA = students.reduce((sum: number, s: any) => sum + (s.gpa || 0), 0) / students.length;
-      const assignments = Math.min(100, Math.max(0, (avgGPA / 4.0) * 100 + variance));
-      const tests = Math.min(100, Math.max(0, (avgGPA / 4.0) * 100 - variance * 0.5));
-      const avgAttendance = students.reduce((sum: number, s: any) => sum + (s.attendance || 0), 0) / students.length;
-      const projects = Math.min(100, Math.max(0, avgAttendance + variance * 2));
-      const avgActivity = students.reduce((sum: number, s: any) => sum + (s.activityScore || 0), 0) / students.length;
-      const quizzes = Math.min(100, Math.max(0, (avgActivity * 1.2) + variance));
+    const subjectNames = ['Python', 'OS', 'DSA', 'M3', 'DELD'];
+    const chartData = [];
 
-      return {
-        month,
-        assignments: Math.round(assignments),
-        tests: Math.round(tests),
-        projects: Math.round(projects),
-        quizzes: Math.round(quizzes),
-      };
+    subjectNames.forEach((subject) => {
+      // Filter exams for this subject
+      const subjectExams = exams.filter(exam => 
+        exam.name.toLowerCase().includes(subject.toLowerCase())
+      );
+
+      if (subjectExams.length === 0) return;
+
+      // Separate CT1 and CT2
+      const ct1Exams = subjectExams.filter(e => 
+        e.name.toLowerCase().includes('ct-1') || e.name.toLowerCase().includes('ct1')
+      );
+      const ct2Exams = subjectExams.filter(e => 
+        e.name.toLowerCase().includes('ct-2') || e.name.toLowerCase().includes('ct2')
+      );
+
+      // Calculate CT1 average and passing percentage (pass = score >= 25, out of 50)
+      let ct1Scores = ct1Exams.map(e => e.ct1_score || 0).filter(s => s > 0);
+      let ct1Average = ct1Scores.length > 0 ? ct1Scores.reduce((a, b) => a + b, 0) / ct1Scores.length : 0;
+      let ct1PassingCount = ct1Scores.filter(s => s >= 25).length;
+      let ct1PassingPercentage = ct1Scores.length > 0 ? Math.round((ct1PassingCount / ct1Scores.length) * 100) : 0;
+
+      // Calculate CT2 average and passing percentage
+      let ct2Scores = ct2Exams.map(e => e.ct2_score || 0).filter(s => s > 0);
+      let ct2Average = ct2Scores.length > 0 ? ct2Scores.reduce((a, b) => a + b, 0) / ct2Scores.length : 0;
+      let ct2PassingCount = ct2Scores.filter(s => s >= 25).length;
+      let ct2PassingPercentage = ct2Scores.length > 0 ? Math.round((ct2PassingCount / ct2Scores.length) * 100) : 0;
+
+      chartData.push({
+        subject,
+        'CT-1 Avg': Math.round(ct1Average * 100) / 100,
+        'CT-2 Avg': Math.round(ct2Average * 100) / 100,
+        'CT-1 Pass %': ct1PassingPercentage,
+        'CT-2 Pass %': ct2PassingPercentage,
+      });
     });
-  }, [students]);
+
+    return chartData;
+  }, [exams]);
 
   if (loading) {
     return (
@@ -59,7 +76,7 @@ export function MarksHistoryChart() {
         <CardContent>
           <div className="flex flex-col items-center justify-center h-[350px] text-slate-400">
             <p className="text-lg">No marks history available</p>
-            <p className="text-sm mt-2">Add students to view marks trends</p>
+            <p className="text-sm mt-2">Add exam data to view subject averages and passing percentages</p>
           </div>
         </CardContent>
       </Card>
@@ -72,50 +89,33 @@ export function MarksHistoryChart() {
         <CardTitle>Student Marks History</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="line" className="w-full">
-          <TabsList className="grid w-full max-w-[400px] grid-cols-2 bg-slate-700">
-            <TabsTrigger value="line" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/50">
-              Line Chart
-            </TabsTrigger>
-            <TabsTrigger value="bar" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/50">
-              Bar Chart
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="line" className="mt-4">
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={marksData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="month" stroke="#94a3b8" />
-                  <YAxis domain={[0, 100]} stroke="#94a3b8" />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="assignments" stroke="#3b82f6" strokeWidth={2} />
-                  <Line type="monotone" dataKey="tests" stroke="#22c55e" strokeWidth={2} />
-                  <Line type="monotone" dataKey="projects" stroke="#a855f7" strokeWidth={2} />
-                  <Line type="monotone" dataKey="quizzes" stroke="#f59e0b" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </TabsContent>
-          <TabsContent value="bar" className="mt-4">
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={marksData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="month" stroke="#94a3b8" />
-                  <YAxis domain={[0, 100]} stroke="#94a3b8" />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="assignments" fill="#3b82f6" />
-                  <Bar dataKey="tests" fill="#22c55e" />
-                  <Bar dataKey="projects" fill="#a855f7" />
-                  <Bar dataKey="quizzes" fill="#f59e0b" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </TabsContent>
-        </Tabs>
+        <div className="h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={marksData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis 
+                dataKey="subject" 
+                stroke="#94a3b8"
+                angle={-45}
+                textAnchor="end"
+                height={100}
+              />
+              <YAxis 
+                stroke="#94a3b8"
+                label={{ value: 'Score / Percentage', angle: -90, position: 'insideLeft' }}
+              />
+              <Tooltip 
+                formatter={(value) => `${value}`}
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }}
+              />
+              <Legend />
+              <Bar dataKey="CT-1 Avg" fill="#3b82f6" name="CT-1 Average Score" />
+              <Bar dataKey="CT-2 Avg" fill="#8b5cf6" name="CT-2 Average Score" />
+              <Bar dataKey="CT-1 Pass %" fill="#10b981" name="CT-1 Passing %" />
+              <Bar dataKey="CT-2 Pass %" fill="#f59e0b" name="CT-2 Passing %" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

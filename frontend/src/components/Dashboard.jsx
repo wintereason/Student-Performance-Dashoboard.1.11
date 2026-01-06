@@ -14,11 +14,19 @@ export default function Dashboard() {
   const [gradeData, setGradeData] = useState([])
   const [subjectData, setSubjectData] = useState([])
   const [gradeDistributionData, setGradeDistributionData] = useState([])
+  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [selectedStudentSubjects, setSelectedStudentSubjects] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchDashboardData()
   }, [])
+
+  useEffect(() => {
+    if (selectedStudent) {
+      fetchSelectedStudentSubjects(selectedStudent.id)
+    }
+  }, [selectedStudent])
 
   const fetchDashboardData = async () => {
     try {
@@ -241,105 +249,6 @@ export default function Dashboard() {
                 <Bar dataKey="Students" fill="#3b82f6" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Performance Section */}
-        <div className="charts-grid">
-          {/* Student Selector */}
-          <div className="chart-card lg-span">
-            <h3 className="chart-card-title">Select Student</h3>
-            <p className="chart-card-desc">Choose a student to view their subject performance</p>
-            <div style={{ padding: '20px' }}>
-              <select 
-                value={selectedStudent?.id || ''} 
-                onChange={(e) => {
-                  const student = allStudents.find(s => s.id == e.target.value)
-                  if (student) setSelectedStudent(student)
-                }}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #475569',
-                  backgroundColor: '#1e293b',
-                  color: '#f1f5f9',
-                  fontSize: '16px',
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="">Select a student...</option>
-                {allStudents.map(student => (
-                  <option key={student.id} value={student.id}>
-                    {student.name} - {student.roll_number}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Subject Performance - Individual Student */}
-          <div className="chart-card lg-span">
-            <h3 className="chart-card-title">Subject Performance</h3>
-            <p className="chart-card-desc">{selectedStudent ? `${selectedStudent.name}'s subject scores` : 'Select a student above'}</p>
-            {selectedStudent && selectedStudentSubjects.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={selectedStudentSubjects}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="name" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" domain={[0, 100]} />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #475569',
-                      borderRadius: '8px'
-                    }}
-                    formatter={(value) => [`${value}%`, 'Score']}
-                  />
-                  <Bar dataKey="score" fill="#10b981" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '300px',
-                color: '#94a3b8',
-                fontSize: '16px'
-              }}>
-                {selectedStudent ? 'No subjects found for this student' : 'Select a student to view their subject performance'}
-              </div>
-            )}
-          </div>
-
-          {/* Grade Distribution Card */}
-          <div className="chart-card">
-            <h3 className="chart-card-title">Grade Breakdown</h3>
-            <div className="grade-list">
-              {gradeDistributionData.map((item) => (
-                <div key={item.grade} className="grade-row">
-                  <div className="grade-badge" style={{ backgroundColor: item.color }}>
-                    {item.grade}
-                  </div>
-                  <div className="grade-details">
-                    <div className="grade-info-header">
-                      <span className="grade-info-label">Grade {item.grade}</span>
-                      <span className="grade-info-count">{Math.round(item.count)} students</span>
-                    </div>
-                    <div className="grade-progress-wrapper">
-                      <div className="grade-progress-bg">
-                        <div
-                          className="grade-progress-fill"
-                          style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
-                        />
-                      </div>
-                      <span className="grade-progress-text">{item.percentage}%</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 

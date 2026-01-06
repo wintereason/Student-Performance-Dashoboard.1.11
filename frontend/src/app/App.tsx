@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { StudentProvider, useStudents } from "./context/StudentContext";
 import { StudentService } from "./services";
+import { StudentSupabaseService } from "./services/SupabaseService";
 import { StudentDetailModal } from "./components/student-detail-modal";
 import { Sidebar } from "./components/sidebar";
 import { StatsCard } from "./components/stats-card";
@@ -43,30 +44,93 @@ function AppContent() {
   });
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [supabaseSubjects, setSupabaseSubjects] = useState<any[]>([]);
+  const [supabaseExams, setSupabaseExams] = useState<any[]>([]);
   
-  const { students, loading, studentDatabase } = useStudents();
+  const { students, loading } = useStudents();
+
+  useEffect(() => {
+    // Fetch subjects and exams
+    const fetchData = async () => {
+      try {
+        const [subjects, exams] = await Promise.all([
+          StudentSupabaseService.getSubjects(),
+          StudentSupabaseService.getExams(),
+        ]);
+        setSupabaseSubjects(subjects || []);
+        setSupabaseExams(exams || []);
+      } catch (err) {
+        console.error("Error fetching subjects/exams:", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   useEffect(() => {
     if (students.length > 0) {
-      calculateStats(students, studentDatabase);
+      calculateStats(students);
     }
-  }, [students, studentDatabase]);
+  }, [students, supabaseExams]);
 
-  const calculateStats = (studentsData: any[], subjects: any[]) => {
-    console.log(`Calculating stats for ${studentsData.length} students`);
-    const calculatedStats = StudentService.calculateStats(studentsData);
+  const calculateStats = (studentsData: any[]) => {
+    console.log(`Calculating stats for ${studentsData.length} students from Supabase`);
     
-    // Calculate trends from subject data
+    if (studentsData.length === 0) {
+      setStats({
+        totalStudents: 0,
+        averageScore: 0,
+        attendanceRate: 0,
+        honorRoll: 0,
+        atRiskCount: 0,
+        subjectTrend: 0,
+      });
+      return;
+    }
+
+    // Calculate from Supabase student data ONLY
+    const totalStudents = studentsData.length;
+    
+    // Calculate average GPA
+    const averageScore = studentsData.reduce((sum, s) => sum + (s.gpa || 0), 0) / totalStudents;
+    
+    // Calculate attendance rate
+    const attendanceRate = studentsData.reduce((sum, s) => sum + (s.attendance || 0), 0) / totalStudents;
+    
+    // Count honor roll (GPA >= 3.5)
+    const honorRoll = studentsData.filter((s) => (s.gpa || 0) >= 3.5).length;
+    
+    // Count at-risk students (GPA < 2.5 OR Attendance < 70% OR Activity Score < 5)
+    const atRiskCount = studentsData.filter((s) => {
+      const gpa = s.gpa || 0;
+      const attendance = s.attendance || 0;
+      const activityScore = s.activity_score || 0;
+      return gpa < 2.5 || attendance < 70 || activityScore < 5;
+    }).length;
+    
+    // Subject trend calculation - average of all exam scores
     let subjectTrend = 0;
-    if (subjects && subjects.length > 0) {
-      const allScores = subjects.flatMap(s => s.subjects.map((sub: any) => sub.percentage));
-      const avgScore = allScores.length > 0 ? allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length : 0;
-      subjectTrend = Math.round(avgScore / 10); // Convert to percentage increase representation
+    if (supabaseExams && supabaseExams.length > 0) {
+      const allScores = supabaseExams
+        .map(exam => {
+          const ct1 = exam.ct1_score || 0;
+          const ct2 = exam.ct2_score || 0;
+          return ct1 + ct2;
+        })
+        .filter(score => score > 0);
+      
+      if (allScores.length > 0) {
+        const averageExamScore = allScores.reduce((a, b) => a + b, 0) / allScores.length;
+        subjectTrend = Math.round((averageExamScore / 100) * 100); // Convert to percentage (out of 100)
+      }
     }
     
     setStats({
-      ...calculatedStats,
-      subjectTrend: subjectTrend > 0 ? subjectTrend : 15, // Default 15% if no data
+      totalStudents,
+      averageScore,
+      attendanceRate,
+      honorRoll,
+      atRiskCount,
+      subjectTrend,
     });
   };
 
@@ -138,10 +202,10 @@ function AppContent() {
                 />
                 <StatsCard
                   title="Subject Performance"
-                  value={`${stats.subjectTrend || 15}%`}
+                  value={`${stats.subjectTrend || 0}%`}
                   icon={Award}
-                  trend={{ value: stats.atRiskCount, isPositive: false }}
-                  subtitle={`${stats.atRiskCount} at risk`}
+                  trend={{ value: Math.max(1, Math.round(stats.subjectTrend / 10)), isPositive: stats.subjectTrend >= 60 }}
+                  subtitle={`${supabaseExams.length} exams recorded`}
                 />
               </div>
 
@@ -153,7 +217,7 @@ function AppContent() {
 
               {/* Performance Breakdown */}
               <div className="grid gap-4 lg:grid-cols-3 mb-6">
-                <SubjectPerformance />
+                <SubjectPerformance exams={supabaseExams} />
                 <TopStudents />
               </div>
 
@@ -387,7 +451,7 @@ function AppContent() {
             <div className="space-y-6">
               <div className="grid gap-6 lg:grid-cols-2">
                 <AttendanceChart />
-                <MarksHistoryChart />
+                <MarksHistoryChart exams={supabaseExams} />
               </div>
               <AtRiskStudents />
             </div>
@@ -404,47 +468,15 @@ function AppContent() {
           )}
 
           {currentPage === 'management' && (
-            <div className="space-y-6">
-              {/* Page Navigation */}
-              <div className="flex justify-center gap-4">
-                <button
-                  onClick={() => setManagementPage(1)}
-                  className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                    managementPage === 1
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                      : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
-                  }`}
-                >
-                  Page 1: Student Management
-                </button>
-                <button
-                  onClick={() => setManagementPage(2)}
-                  className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                    managementPage === 2
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                      : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
-                  }`}
-                >
-                  Page 2: Subject Scores
-                </button>
-              </div>
-
-              {/* Page 1: Student Management */}
-              {managementPage === 1 && (
-                <ManagementBoard />
-              )}
-
-              {/* Page 2: Subject Scores */}
-              {managementPage === 2 && (
-                <SubjectScoresTable managedStudents={students} />
-              )}
-            </div>
+            <ManagementBoard students={students} />
           )}
 
           <StudentDetailModal 
             student={selectedStudent} 
             isOpen={isDetailModalOpen}
             onClose={() => setIsDetailModalOpen(false)}
+            subjects={supabaseSubjects}
+            exams={supabaseExams}
           />
         </main>
       </div>

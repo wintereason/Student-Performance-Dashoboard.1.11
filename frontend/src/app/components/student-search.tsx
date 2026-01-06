@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useStudents } from "../context/StudentContext";
+import { StudentSupabaseService } from "../services/SupabaseService";
 import { StudentDetailModal } from "./student-detail-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
@@ -21,7 +22,26 @@ export function StudentSearch() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [supabaseSubjects, setSupabaseSubjects] = useState<any[]>([]);
+  const [supabaseExams, setSupabaseExams] = useState<any[]>([]);
   const itemsPerPage = 10;
+
+  useEffect(() => {
+    // Fetch subjects and exams
+    const fetchData = async () => {
+      try {
+        const [subjects, exams] = await Promise.all([
+          StudentSupabaseService.getSubjects(),
+          StudentSupabaseService.getExams(),
+        ]);
+        setSupabaseSubjects(subjects || []);
+        setSupabaseExams(exams || []);
+      } catch (err) {
+        console.error("Error fetching subjects/exams:", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   useEffect(() => {
     // Update filtered students when the students data changes
@@ -216,6 +236,8 @@ export function StudentSearch() {
         student={selectedStudent} 
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
+        subjects={supabaseSubjects}
+        exams={supabaseExams}
       />
     </div>
   );

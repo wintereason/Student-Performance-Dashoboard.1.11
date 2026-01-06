@@ -14,8 +14,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     { id: 'overview', label: 'Overview Board', icon: BarChart3 },
     { id: 'performance', label: 'Performance', icon: TrendingUp },
     { id: 'students', label: 'Students', icon: Users },
-    { id: 'subjects', label: 'Subjects', icon: BookOpen },
-    { id: 'management', label: 'Management', icon: Settings },
+    { id: 'management', label: 'Student Management', icon: Settings },
   ];
 
   return (

@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useStudents } from "../context/StudentContext";
+import { StudentSupabaseService } from "../services/SupabaseService";
 import { StudentModel, Student } from "../models";
 import { StudentDetailModal } from "./student-detail-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -16,6 +17,25 @@ export function RecentActivity() {
   const { students, loading } = useStudents();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [supabaseSubjects, setSupabaseSubjects] = useState<any[]>([]);
+  const [supabaseExams, setSupabaseExams] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch subjects and exams
+    const fetchData = async () => {
+      try {
+        const [subjects, exams] = await Promise.all([
+          StudentSupabaseService.getSubjects(),
+          StudentSupabaseService.getExams(),
+        ]);
+        setSupabaseSubjects(subjects || []);
+        setSupabaseExams(exams || []);
+      } catch (err) {
+        console.error("Error fetching subjects/exams:", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   const topScorers = useMemo(() => {
     if (students.length === 0) return [];
@@ -129,6 +149,8 @@ export function RecentActivity() {
           setIsDetailModalOpen(false);
           setSelectedStudent(null);
         }}
+        subjects={supabaseSubjects}
+        exams={supabaseExams}
       />
     )}
     </>

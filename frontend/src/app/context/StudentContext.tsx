@@ -1,33 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Student } from '../models';
-import { StudentService } from '../services';
-import { SubjectService } from '../services/SubjectService';
-
-interface SubjectScore {
-  id: number;
-  name: string;
-  marks: number;
-  maxMarks: number;
-  percentage: number;
-}
-
-interface StudentData {
-  studentId: string;
-  studentName: string;
-  subjects: SubjectScore[];
-}
+import { StudentSupabaseService } from '../services/SupabaseService';
 
 interface StudentContextType {
   students: Student[];
   loading: boolean;
+  error: string | null;
   addStudent: (student: Student) => void;
   updateStudent: (student: Student) => void;
   deleteStudent: (studentId: number) => void;
   refreshStudents: () => Promise<void>;
   fetchStudents: () => Promise<void>;
-  studentDatabase: StudentData[];
-  setStudentDatabase: (data: StudentData[]) => void;
-  addSubjectToStudent: (studentId: string, studentName: string, subject: SubjectScore) => void;
 }
 
 const StudentContext = createContext<StudentContextType | undefined>(undefined);
@@ -35,59 +18,31 @@ const StudentContext = createContext<StudentContextType | undefined>(undefined);
 export function StudentProvider({ children }: { children: ReactNode }) {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  const [studentDatabase, setStudentDatabase] = useState<StudentData[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const data = await StudentService.getAllStudents();
-      setStudents(data);
-    } catch (error) {
-      console.error("Error fetching students:", error);
+      setError(null);
+      // Fetch ONLY from Supabase
+      const data = await StudentSupabaseService.getStudents();
+      setStudents(data || []);
+      console.log("Fetched students from Supabase:", data);
+    } catch (err) {
+      console.error("Error fetching students from Supabase:", err);
+      setError("Failed to fetch students from Supabase");
       setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadSubjectDatabase = async () => {
-    try {
-      console.log("[Context] Loading subject database from API...");
-      // Fetch all students with their subjects from the database
-      const students = await StudentService.getAllStudents();
-      const subjectData: StudentData[] = [];
-
-      for (const student of students) {
-        const subjects = await SubjectService.getStudentSubjects(student.id);
-        if (subjects && subjects.length > 0) {
-          subjectData.push({
-            studentId: student.id.toString(),
-            studentName: student.name,
-            subjects: subjects.map((s: any) => ({
-              id: s.id,
-              name: s.name || s.subject_name,
-              marks: s.marks,
-              maxMarks: s.maxMarks,
-              percentage: s.percentage,
-            })),
-          });
-        }
-      }
-
-      console.log("[Context] Loaded subject database from API:", subjectData);
-      setStudentDatabase(subjectData);
-    } catch (error) {
-      console.error("[Context] Error loading subject database:", error);
-    }
-  };
-
   useEffect(() => {
     fetchStudents();
-    loadSubjectDatabase();
   }, []);
 
   const addStudent = (student: Student) => {
-    console.log("Adding student:", student);
+    console.log("Adding student to context:", student);
     setStudents((prev) => {
       const updated = [...prev, student];
       return updated.sort((a, b) => a.id - b.id);
@@ -95,74 +50,61 @@ export function StudentProvider({ children }: { children: ReactNode }) {
   };
 
   const updateStudent = async (student: Student) => {
-    console.log("Updating student:", student);
+    console.log("Updating student in context:", student);
     try {
-      // Save to backend first
-      const updatedStudent = await StudentService.updateStudent(student);
-      if (updatedStudent) {
-        // Update local state with response from backend
+      // Update in Supabase first
+      const updated = await StudentSupabaseService.updateStudent(student.id, student);
+      if (updated) {
         setStudents((prev) =>
-          prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
-            .sort((a, b) => a.id - b.id)
+          prev.map((s) => (s.id === student.id ? updated : s))
         );
-        console.log("Student updated successfully in backend and local state");
       }
-    } catch (error) {
-      console.error("Error updating student:", error);
+    } catch (err) {
+      console.error("Error updating student:", err);
+      setError("Failed to update student");
     }
   };
 
-  const deleteStudent = (studentId: number) => {
-    console.log("Deleting student:", studentId);
-    setStudents((prev) => prev.filter((s) => s.id !== studentId));
+  const deleteStudent = async (studentId: number) => {
+    console.log("Deleting student from context:", studentId);
+    try {
+      // Delete from Supabase first
+      const success = await StudentSupabaseService.deleteStudent(studentId);
+      if (success) {
+        setStudents((prev) => prev.filter((s) => s.id !== studentId));
+      }
+    } catch (err) {
+      console.error("Error deleting student:", err);
+      setError("Failed to delete student");
+    }
   };
 
   const refreshStudents = async () => {
-    setLoading(true);
     await fetchStudents();
   };
 
-  const addSubjectToStudent = (studentId: string, studentName: string, subject: SubjectScore) => {
-    setStudentDatabase((prev) => {
-      let studentData = prev.find((s) => s.studentId === studentId);
-      if (!studentData) {
-        studentData = {
-          studentId,
-          studentName,
-          subjects: [],
-        };
-        return [...prev, studentData];
-      }
-      return prev.map((s) => 
-        s.studentId === studentId 
-          ? { ...s, subjects: [...s.subjects, subject] }
-          : s
-      );
-    });
-  };
-
-  const value: StudentContextType = {
-    students,
-    loading,
-    addStudent,
-    updateStudent,
-    deleteStudent,
-    refreshStudents,
-    fetchStudents,
-    studentDatabase,
-    setStudentDatabase,
-    addSubjectToStudent,
-  };
-
   return (
-    <StudentContext.Provider value={value}>{children}</StudentContext.Provider>
+    <StudentContext.Provider
+      value={{
+        students,
+        loading,
+        error,
+        addStudent,
+        updateStudent,
+        deleteStudent,
+        refreshStudents,
+        fetchStudents,
+      }}
+    >
+      {children}
+    </StudentContext.Provider>
   );
 }
 
 export function useStudents() {
   const context = useContext(StudentContext);
-  if (context === undefined) {
-    throw new Error("useStudents must be used within a StudentProvider");
+  if (!context) {
+    throw new Error("useStudents must be used within StudentProvider");
   }
   return context;
 }

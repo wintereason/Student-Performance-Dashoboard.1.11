@@ -1,36 +1,64 @@
 import { useMemo } from "react";
 import { useStudents } from "../context/StudentContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, Label } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
-export function SubjectPerformance() {
+interface Exam {
+  id: number;
+  name: string;
+  exam_date: string;
+  exam_time?: string;
+  duration: string;
+  room: string;
+  status?: string;
+  ct1_score?: number;
+  ct2_score?: number;
+}
+
+export function SubjectPerformance({ exams = [] }: { exams?: Exam[] }) {
   const { loading, studentDatabase } = useStudents();
 
-  // Pie chart data: aggregate subject scores from studentDatabase
+  // Pie chart data: aggregate subject scores from exams
   const chartData = useMemo(() => {
-    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
-    if (!studentDatabase || studentDatabase.length === 0) return [];
+    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
+    const subjectNames = ['Python', 'OS', 'DSA', 'M3', 'DELD'];
+    
+    if (!exams || exams.length === 0) return [];
 
-    // Aggregate all subjects across all students
-    const subjectMap: Record<string, { total: number; count: number }> = {};
-    studentDatabase.forEach((student) => {
-      student.subjects.forEach((subject) => {
-        if (!subjectMap[subject.name]) {
-          subjectMap[subject.name] = { total: 0, count: 0 };
-        }
-        subjectMap[subject.name].total += subject.percentage;
-        subjectMap[subject.name].count += 1;
-      });
-    });
+    // Calculate average for each subject
+    const rawData = subjectNames.map((subject, idx) => {
+      const subjectExams = exams.filter(exam => 
+        exam.name.toLowerCase().includes(subject.toLowerCase())
+      );
+      
+      if (subjectExams.length === 0) return null;
+      
+      const scores = subjectExams
+        .map(exam => (exam.ct1_score || 0) + (exam.ct2_score || 0))
+        .filter(score => score > 0);
+      
+      if (scores.length === 0) return null;
+      
+      const average = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100;
+      
+      return {
+        name: subject,
+        rawValue: average,
+        color: colors[idx % colors.length],
+      };
+    }).filter(Boolean) as Array<{ name: string; rawValue: number; color: string }>;
 
-    // Only show subjects that have at least one score
-    const data = Object.entries(subjectMap).map(([name, { total, count }], idx) => ({
-      name,
-      value: Math.round((total / count) * 100) / 100, // average percentage
-      color: colors[idx % colors.length],
-    }));
+    // Calculate total and convert to percentages
+    const total = rawData.reduce((sum, item) => sum + item.rawValue, 0);
+    if (total === 0) return [];
+
+    const data = rawData.map(item => ({
+      ...item,
+      value: Math.round((item.rawValue / total) * 10000) / 100, // percentage with 2 decimals
+    })).sort((a, b) => b.value - a.value); // Sort by highest percentage first
+
     return data;
-  }, [studentDatabase]);
+  }, [exams]);
 
   if (loading) {
     return (
@@ -87,7 +115,7 @@ export function SubjectPerformance() {
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
-            <Tooltip formatter={(value) => `${value}%`} />
+            <Tooltip formatter={(value) => `${value.toFixed(2)}%`} />
             <Legend verticalAlign="bottom" height={36} />
           </PieChart>
         </ResponsiveContainer>

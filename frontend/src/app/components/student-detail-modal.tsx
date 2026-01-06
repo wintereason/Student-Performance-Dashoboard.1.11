@@ -17,16 +17,60 @@ interface Student {
   activityScore: number;
 }
 
+interface Subject {
+  id: number;
+  name: string;
+  code: string;
+  instructor: string;
+  credits: number;
+  status?: string;
+}
+
+interface Exam {
+  id: number;
+  name: string;
+  exam_date: string;
+  exam_time?: string;
+  duration: string;
+  room: string;
+  status?: string;
+  ct1_score?: number;
+  ct2_score?: number;
+}
+
 interface StudentDetailModalProps {
   student: Student | null;
   isOpen: boolean;
   onClose: () => void;
+  subjects?: Subject[];
+  exams?: Exam[];
 }
 
-export function StudentDetailModal({ student, isOpen, onClose }: StudentDetailModalProps) {
+export function StudentDetailModal({ student, isOpen, onClose, subjects = [], exams = [] }: StudentDetailModalProps) {
   if (!student) return null;
 
   const overallPerformance = StudentModel.calculateOverallPerformance(student);
+
+  // Calculate exam marks for this student
+  const validSubjects = subjects.filter(subject =>
+    exams.some(exam => exam.name.toLowerCase().includes(subject.name.toLowerCase()))
+  );
+
+  let ct1Total = 0;
+  let ct2Total = 0;
+  const studentExams = validSubjects.map(subject => {
+    const exam = exams.find(e => e.name.toLowerCase().includes(subject.name.toLowerCase()));
+    const ct1 = exam?.ct1_score || 0;
+    const ct2 = exam?.ct2_score || 0;
+    ct1Total += ct1;
+    ct2Total += ct2;
+    return {
+      subject,
+      exam,
+      ct1,
+      ct2
+    };
+  });
 
   const getGPALabel = (gpa: number) => {
     if (gpa >= 3.7) return "Excellent";
@@ -217,6 +261,53 @@ export function StudentDetailModal({ student, isOpen, onClose }: StudentDetailMo
             <p className="text-sm font-bold text-slate-100">{student.department}</p>
           </div>
         </div>
+
+        {/* Exam Marks Section */}
+        {studentExams.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-100 mb-3 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-blue-400" />
+              Exam Marks
+            </h3>
+            <div className="space-y-2">
+              {studentExams.map((item) => (
+                <div key={item.subject.id} className="bg-slate-700/30 rounded-lg p-3 border border-slate-600/30">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{item.subject.name}</p>
+                      <p className="text-xs text-slate-400">{item.subject.code} • {item.subject.instructor}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-blue-900/20 rounded px-2 py-1.5 border border-blue-700/30">
+                      <p className="text-xs text-slate-400 uppercase">CT1</p>
+                      <p className="text-lg font-bold text-blue-400">{item.ct1 || '-'}</p>
+                    </div>
+                    <div className="bg-purple-900/20 rounded px-2 py-1.5 border border-purple-700/30">
+                      <p className="text-xs text-slate-400 uppercase">CT2</p>
+                      <p className="text-lg font-bold text-purple-400">{item.ct2 || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Total Marks */}
+              <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600/50 mt-3">
+                <p className="text-xs text-slate-400 uppercase mb-2 font-semibold">Total Marks</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-blue-900/30 rounded px-2 py-2 text-center">
+                    <p className="text-xs text-slate-400">CT1 Total</p>
+                    <p className="text-xl font-bold text-blue-400">{ct1Total || '-'}</p>
+                  </div>
+                  <div className="bg-purple-900/30 rounded px-2 py-2 text-center">
+                    <p className="text-xs text-slate-400">CT2 Total</p>
+                    <p className="text-xl font-bold text-purple-400">{ct2Total || '-'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
