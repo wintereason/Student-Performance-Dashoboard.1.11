@@ -572,13 +572,28 @@ function StudentDetailsPage({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">Student Details</h2>
-        <button
-          onClick={onAddStudent}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
-        >
-          <Plus size={18} />
-          Add Student
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              const success = await StudentSupabaseService.fillActivityScores();
+              if (success) {
+                alert('Activity scores filled successfully! Please refresh the page.');
+              } else {
+                alert('Failed to fill activity scores.');
+              }
+            }}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2"
+          >
+            Fill Activity Scores
+          </button>
+          <button
+            onClick={onAddStudent}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Add Student
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-slate-300">
@@ -632,7 +647,23 @@ function StudentDetailsPage({
                           {(student.gpa || 0).toFixed(2)}
                         </span>
                       </td>
-                      <td className="px-4 py-3">{(student.activity_score || 0).toFixed(1)}</td>
+                      <td className="px-4 py-3">
+                        {student.activity_score !== null && student.activity_score !== undefined && student.activity_score !== 0 ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 bg-slate-700 rounded-full h-2">
+                              <div
+                                className="bg-gradient-to-r from-purple-500 to-pink-600 h-2 rounded-full"
+                                style={{ width: `${Math.min((student.activity_score || 0) * 10, 100)}%` }}
+                              />
+                            </div>
+                            <span className="font-semibold text-purple-400">{(student.activity_score || 0).toFixed(1)}</span>
+                          </div>
+                        ) : (
+                          <span className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full font-medium text-sm">
+                            {student.activity_score !== null && student.activity_score !== undefined ? (student.activity_score || 0).toFixed(1) : 'Not Set'}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 flex gap-2">
                         <button
                           onClick={() => onEditStudent(student)}

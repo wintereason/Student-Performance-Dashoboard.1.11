@@ -350,6 +350,30 @@ export const StudentSupabaseService = {
       supabase.removeSubscription(subscription);
     }
   },
+
+  // Fill activity scores for all students
+  async fillActivityScores(): Promise<boolean> {
+    try {
+      const students = await this.getStudents();
+      
+      for (const student of students) {
+        // If activity_score is null or 0, generate a random one
+        if (!student.activity_score || student.activity_score === 0) {
+          const randomScore = Math.floor(Math.random() * 10) + 1; // 1-10
+          await this.updateStudent(student.id, {
+            ...student,
+            activity_score: randomScore
+          });
+        }
+      }
+      
+      console.log(`Activity scores filled for ${students.length} students`);
+      return true;
+    } catch (error) {
+      console.error('Error filling activity scores:', error);
+      return false;
+    }
+  },
 };
 
 export default StudentSupabaseService;
